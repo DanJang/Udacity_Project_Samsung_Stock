@@ -1,0 +1,808 @@
+Korea Stock Market, centered on Samsung Electronics by Daniel Jang
+========================================================
+
+Samsung Electronics, the company of Galaxy series cell-phone manufacturer 
+in Korea, https://finance.yahoo.com/quote/005935.KS?p=005935.KS, is said to 
+account for 20% of total Korea stock market - the market capitalization 
+of Samsung Electronics is 329 B dollars and entire of Korea is 1933 B dollars. 
+In case of Apple, it is less than 3% - Apple's market capitalization is 869 B 
+dollars, which is 2.9 % of total US stock market, on November 30, 2017.  
+Accordingly, the stock value of Samsung Electronics has significant weight in 
+KOSPI, the KOrea composite Stock Price Index. Even small fluctuation of Samsung 
+Electronics solely can impact the whole market index. 
+In this project we will try to understand the characteristics of Korea stock 
+market, highlighting Samsung stock.   
+
+* Market Capitalization or MarketCap is the total price of a company, 
+calculated by the product of the count of the stock and the price of the stock.  
+* The source of the data - Yahoo Finance, 
+Kosis(Korea Staticstical Information Institute) and KRX(Korea Stock Exchange)  
+* 3 CSV files were formed by calling API and downloading through Python codes.    
+    1. samsung_electronics_20000104_20180321.csv  
+      * 4592 observations x 7 variables  
+      * Samsung Electronics stock price since 2000-01-04 using Yahoo Finance API  
+    2. df_gross_market_cap_trend.csv  
+      * 145 observations x 9 variables  
+      * KOSPI market capitalization monthly trend since 2006-01, from Kosis    
+    3. dfallcompanies.csv  
+      * 2312 observations x 7 variables  
+      * Company and ticker information in Korea stock market via KRX API.  
+      * Samsung Electronics is just a single item of 2312 tickers but we can see 
+      how big its market capitalization is with this data.  
+
+
+# Univariate Plots Section
+
+Let's look into each 3 CSV file.   
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+# rm(list=ls()) 
+
+library(ggplot2)
+library(dplyr)
+```
+
+Daily stock price and transaction volume of Samsung Electronics.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_samsung_csv}
+dfsamsung <- read.csv("samsung_electronics_20000104_20180321.csv")
+head(dfsamsung,5)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfsamsung, aes(dfsamsung$Adj.Close)) + 
+  geom_histogram(binwidth = 100000)
+```
+
+The histogram says there are two groups of the stock price in hisory.  
+However, because we alreay know it is stock price over time, the 2 
+groups would reveal its true meaning in the flow of the time.    
+Next. Check the price gap between open and close.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfsamsung, aes(dfsamsung$Open - dfsamsung$Close)) + 
+  geom_histogram()
+
+```
+
+The gaps converge to zero. It might mean that the stock price of this company 
+has been stable over time. However, the judge has to consider the time flow, 
+so we would need bivariate analysis.  
+Let's see the volume traded daily.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+g <- ggplot(dfsamsung, aes(dfsamsung$Volume)) + geom_histogram()
+show(g)
+gdata <- ggplot_build(g)
+```
+
+We can see there is a peak at volume = 226503, meaning the most frequently 
+traded amount is about 226,503 daily. When we consider the total number of the 
+stock 128,386,494, we can understand that the price of stock is set by the price 
+of limited transactions, less than 0.18 % of total stock number here.  
+Obviously, the whole stock is not sellable and buyable in one day, however, 
+it is stunning finding to me that this small portion of the total stock 
+determines the price.  
+
+Let's move on to the next file, the trend of whole Korea stock market.  
+When it is univariate analysis, one thing I have interest most here is turnnover 
+rate, how much portion of the stock changed the ownership. That figure would 
+provide some insight how much the market is in people's attention and interest.   
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_kospi_market_cap_trend_csv}
+# Load the Data
+dfmc_hist <- read.csv("df_gross_market_cap_trend.csv", header=TRUE, 
+                      fileEncoding="UTF-8")
+head(dfmc_hist,5)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfmc_hist, aes(dfmc_hist$turnover_rate_share)) + geom_histogram()
+```
+
+Notice that the time basis of the data is a month. Every month, about 35% of the 
+total stock in Korea market has changed the ownership. Would that figure mean 
+the ownership is way too rapidly changing? no idea for now.  We would need to 
+compare that with US and Japan later.  
+Now, let's see daily average flow of money between sellers and buyers.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfmc_hist, aes(dfmc_hist$traded_money_daily)) + geom_histogram()
+# summary(dfmc_hist)
+```
+
+Mean value is roughly 7 B USD. When I consider that with 1933 B USD, the whole 
+value of Korea stock market, we can notice just 0.4 % of total market share 
+plays daily and determines the price. It looks consistent with the previous 
+finding that Samsung stock price was also determined by only 0.18 % of total 
+share daily,  
+There are some occasions where daily money traded was way much like 
+16,000,000,000,000 KRW (= 16 B USD rougly), more than twice of the mean value. 
+When I see the date of the many transactions, 2009-05, 2011-07, 2018-01 
+do not remind me of much for now.  
+
+Now let's look into the 3rd CSV, all companies in Korea stock market.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_all_companies_in_KOSPI_csv}
+dfallcompanies <- read.csv("dfallcompanies.csv", header=TRUE, 
+                           fileEncoding = "UTF-8")
+head(dfallcompanies, 5)
+
+# the share count of Samsung, to calculate Market Cap later
+samsung_share_count = dfallcompanies[
+                        dfallcompanies$ticker == "005930",c("share_count")
+                        ]
+```
+
+Samsung Electronics sits at the top. The raw data from KOSIS already calculated 
+the market capitalization and its ratio to Korea entire. For the later use, 
+the stock count of Samsung Electronics has been noted - 128386494.  
+Histogram for market capitalization. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfallcompanies, aes(dfallcompanies$market_cap)) + 
+  geom_histogram() 
+```
+
+In ordinary X-axis, the plot does not reveal much information. It is positively 
+skewed extremely.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfallcompanies, aes(dfallcompanies$market_cap)) + 
+  geom_histogram() +
+  scale_x_log10()  
+```
+
+After applying log transformation, We can get market capitalization mostly sits 
+between roughly 10 M USD and 1 B USD. Samsung and Hyundai are a few outliers at 
+the right most, reaching around 300 B USD.  
+Then, I want to check how diverse the share count.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(dfallcompanies, aes(dfallcompanies$share_count)) + 
+  geom_histogram() +
+  scale_x_log10()
+
+```
+
+X axis is also log transformed because it is posiviely skewed like market cap.  
+We can see the stock count of each company ranges 1 M ~ 100 M mostly.  
+Samsung is 128 M in the stock count positioning at the right-most.  
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+1. samsung_electronics_20000104_20180321.csv  
+  * 4592 observations x 7 variables  
+2. df_gross_market_cap_trend.csv  
+  * 145 observations x 9 variables  
+3. dfallcompanies.csv  
+  * 2312 observations x 7 variables  
+
+### What is/are the main feature(s) of interest in your dataset?
+1. samsung_electronics_20000104_20180321.csv  
+  * 'Adj.Close' : Daily end price at closure. Market capitalization is 
+  calculated by crossing this value and stock count.  
+2. df_gross_market_cap_trend.csv  
+  * 'gross_market_cap' : the market capitalization of the whole Korea stock 
+  market.  
+  * We will watch Samsung's value in the flow of total market, so this data 
+  reveal how the main stream is flowing.  
+3. dfallcompanies.csv  
+  * 'market_cap_ratio' : the ratio of each company's market cap against the 
+  whole Korea market.  
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+1. samsung_electronics_20000104_20180321.csv  
+  * 'Volume' : the traded volume per a day, which might have association with 
+  the price. For example, if the volume increases how it would impact the price? 
+2. df_gross_market_cap_trend.csv  
+  * 'turnover_rate_marketcap' : the proportion of the total stock that changed 
+  the ownership might have some connection with the market cap trend.  
+3. dfallcompanies.csv  
+  * 'industry' : industry the company belongs to. This is the only categorical 
+  variable in my datasets. Though we already have Korea total market trends, 
+  industry segment that Samsung belongs to might be showing more granular 
+  understanding.  
+
+
+### Did you create any new variables from existing variables in the dataset?
+Though not used for univariate analysis, Many viriables were created afterward.  
+The first two datasets are time series datasets. When I imported the data into 
+Rstudio, the 'date' was just recognized as string. So, I created a new variable 
+that converted string date to date type. To examine seasonality, 
+year and month were separated, to repeatedly show the stock price on the same 1 
+~ 12 month axis. To normalize the value range, new variable was created to put 
+standardized value in it.  
+One challenge was that the 2nd dataset is monthly record of the past. 
+To convert '2011-01' to date type, a day has to be specified. I inserted '-15' 
+as the center of the month and converted the string to date type.  
+
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+There was no unusual distribution according to univariate exploration. There are 
+many outliers like Samsung and Hyundai, but they are the main subjects 
+of this document.  
+During the data preparation, the API at Korea goverment organization returned 
+Korean variable name like '종목코드' and so on. I translated that to English.  
+One tricky part was dfallcompanies.csv, because the data was orginally from 2 
+data files according to the market - KOSPI and KOSDAQ in Korea. I concatenated 
+the dataset to see the whole company landscape. For that, ticker code was 
+reformatted as '005390' from '5390' for example, to support consistent code 
+name.  
+
+
+
+# Bivariate Plots Section
+
+Because the first two datasets are time-series data. Univariate analysis might 
+not be informative. Now we can put x-axis the date. 
+
+First, stock price trends of Samsung Electronics.  
+* 'Adj.Close' is adjusted price at close, usually same as 'Close'  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# adding a new date type col
+dfsamsung$date <- as.Date(dfsamsung$Date, "%Y-%m-%d")
+# plot
+ggplot(data=dfsamsung, mapping=aes(x=date, y=Adj.Close)) +
+  geom_line(alpha=0.3, color="blue") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+I get that due to the good sales of Galaxy series, the stock price skyrocketed 
+in recent years.  
+It is time-series data. There might be seasonality.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# first, separate year, month 
+dfsamsung$year <- as.numeric(format(as.Date(dfsamsung$date),"%Y")) 
+dfsamsung$month <- as.numeric(format(as.Date(dfsamsung$date),"%m"))
+dfsamsung$month_day <- as.Date(paste("2000-", 
+                                substring(dfsamsung$Date,6,10),sep="")
+                               ,"%Y-%m-%d")
+# plot
+ggplot(data = dfsamsung, aes(x = month_day, y = Adj.Close, group = year, 
+                             colour=as.factor(year))) + 
+  geom_line() + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") 
+
+```
+
+It looks too noisy. Adding Smoothing.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data = dfsamsung, aes(x = month_day, y = Adj.Close, group = year, 
+                             colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") +
+  geom_line(alpha=.2) + 
+  geom_smooth() 
+
+```
+
+It is hard to detect any pattern because y range is wide. 
+Applying standardization.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# using dplyr
+scale_this <- function(x) { (x - mean(x, na.rm=TRUE)) / sd(x, na.rm=TRUE) }
+dfsamsung_scaled <- 
+  dfsamsung %>%
+  group_by(year) %>%
+  mutate(Std_Close = scale_this(Adj.Close),
+         Std_Volume = scale_this(Volume))
+ggplot(data=dfsamsung_scaled, aes(x=month_day, y=Std_Close, group=year, 
+                                  colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") + 
+  geom_line(alpha=.1) + 
+  geom_smooth(alpha=.8) 
+
+```
+
+Still it looks random because of too many streams. So I picked years showing 
+similar pattern.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+dfss <- subset(dfsamsung_scaled, year %in% 
+                 c(2000,2001,2002,2004,2008,2010,2011,2012,2013,2014,2015))
+ggplot(data = dfss, aes(x = month_day, y = Std_Close, group = year, 
+                        colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") + 
+  geom_line(alpha=.2) +
+  geom_smooth(alpha=.8) 
+```
+
+Pattern 1 - decrease in summer and rise in winter, in year 2000,2001,2002, 2004,2008,2010,2011,2012,2013,2014,2015. I guess this cycle basically 
+is the consistent power that boosted Samsung stock price. 
+There might be some event repeatedly takes place every year. For example, 
+it might be spree of new cell phone release. 
+We would need more historical reference to find a clue.    
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+dfss <- subset(dfsamsung_scaled, year %in% c(2003,2005,2009,2016,2017))
+ggplot(data = dfss, aes(x = month_day, y = Std_Close, group = year, 
+                        colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") + 
+  geom_line(alpha=.2) +
+  geom_smooth(alpha=.8) 
+
+```
+
+Patter 2 - just up and up. These years need another research on why this 
+accelration took place.  
+
+Next, what about daily traded volume? 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data = dfsamsung, aes(x = date, y = Volume)) + 
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") + 
+  geom_line(alpha=.2) +
+  geom_smooth(alpha=.8) 
+```
+
+Defying the price trend, the traded volume has been decreasing. It might be 
+obvious, because the price soared and the price now is over 2000 USD per share. 
+Small investors might not be able to engage the trade.  
+Notably, during the global crisis started in 2008, the volume increased. 
+Samsung stock price at that time was increasing, which indicates that 
+investors bought Samsung during the crisis. They must have assumed that crisis 
+was a chance to buy Samsung. If the stock wes bought in that period, the value 
+would be x5 by now.  
+  
+I had a check on the seasonality of the volume after standardizing the value. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data = dfsamsung_scaled, aes(x = month_day, y = Std_Volume, group=year, 
+                                    colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") + 
+  coord_cartesian(xlim=(as.Date(c("2000-01-01", "2000-12-01")))) + 
+  geom_smooth(alpha=.2) 
+```
+
+I could not detect any pattern though I expected some boost around October, 
+because we saw the pattern of rising price around that month in many years.   
+  
+Next, the trend of total market capitalization in KOSPI
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# adding a new date type col
+dfmc_hist$date <- as.Date(paste(dfmc_hist$year_month , "-15", sep=""), 
+                          "%Y-%m-%d")
+# plot
+ggplot(data=dfmc_hist, mapping=aes(x=date, y=gross_market_cap)) +
+  scale_x_date(date_labels = "%Y%m%d") + 
+  geom_line(alpha=0.8)+ 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Acknowledgeably, the market capitalization of companies in Korea is escalating.  
+Sudden drop in 2008 when the global crisis from Lehman Brothers bankruptcy took 
+place, is recognizable as well.  
+* Notice that it is not KOSPI, the Korea stock market index, but the total of 
+market capitalization which we have interest in here.  
+
+Now. Let's see whether there is seasonality in the records.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# first, separate year, month 
+dfmc_hist$year <- as.numeric(format(as.Date(dfmc_hist$date),"%Y")) 
+dfmc_hist$month <- as.numeric(format(as.Date(dfmc_hist$date),"%m"))
+dfmc_hist$month_day <- as.Date(paste("2000-", 
+                                     substring(dfmc_hist$date,6,10),sep="")
+                               ,"%Y-%m-%d")
+# plot
+ggplot(data = dfmc_hist, aes(x = month_day, y = gross_market_cap, group = year, 
+                             colour=as.factor(year))) + 
+  geom_line(alpha=0.2) +
+  geom_smooth(alpha=0.2) +
+  # geom_point() +
+  # scale_x_discrete(breaks = dfmc_hist$month, labels = str(dfmc_hist$month))
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") 
+```
+
+Not much. let's check on the traded money. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data=dfmc_hist, mapping=aes(x=date, y=traded_money_monthly)) +
+  geom_line(alpha=0.3) + 
+  geom_smooth() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+There is a big, 10-year-spanning wave. The market is approaching another peak 
+now. This is not stock price but the traded money, but this surely implies the 
+people's consideration of investing stock market. 
+Accordingly we can guess the traded volume is increasing.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data=dfmc_hist, mapping=aes(x=date, y=traded_volume_monthly)) +
+  geom_line(alpha=0.3) + 
+  geom_smooth() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+As expected.  
+  
+Now, let's look into the final dataset, all the companies listed in Korea stock 
+market.  
+When I ordered the data by the market capitalization ratio. the plot is just as 
+I heard of. Samsung is overwhelming.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+dfallcompanies_subset <- subset(dfallcompanies, market_cap_ratio >= 0.01)
+dfallcompanies_subset <- dfallcompanies_subset[
+                order(dfallcompanies_subset$market_cap_ratio, decreasing = T),]
+dfallcompanies_subset$ticker_nm_eng <- 
+  c('Sammsung Elec.','SK hynix','Celltrion','Samsung Elec.P','Hyundai Motors',
+    'Samsung Biologics','POSCO','LG Chemical','KB finance','Naver',
+    'Samsung Construction','Samsung Life','Hyundai Mobis','SK','Shinhan group',
+    'KEPCO','Samsung SDS','SK innovation')
+ggplot(data=dfallcompanies_subset,mapping=aes(x=ticker_nm,y=market_cap_ratio))+
+  geom_bar(stat="identity", fill="dark blue") +
+  aes(x=reorder(ticker_nm_eng,-market_cap_ratio),y=market_cap_ratio,
+      label=market_cap_ratio) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+There are many companies' name starting with 'Samsung'. They could be assumed 
+a single company, Samsung. 
+Then their market cap ratio might surpass 0.3 of the total Korea stock market. 
+The ownership of that group companies are known to be very complicated and 
+blurry at the edge. So, it would be next time to separate all the Samsung 
+family companies and its market capitalization.  
+
+Now let's group by industry to see how diverse the indsutry and how we can 
+characterize Korea industries. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+dfallcompanies_group <- 
+  dfallcompanies %>%
+  group_by(industry) %>%
+  summarise(market_cap_ratio_sum = sum(market_cap_ratio),n=n())
+dfallcompanies_group <- dfallcompanies_group[
+                order(dfallcompanies_group$market_cap_ratio_sum, 
+                      decreasing = T),]
+dfallcompanies_group <- dfallcompanies_group[
+  dfallcompanies_group$market_cap_ratio_sum  > 0.01,]
+dfallcompanies_group$industry_eng <- 
+  c("Communiation Device","BFSI","Biochemicals","Semiconductor",
+    "Basic Chemicals", "Insurance",
+    "Other Chemicals","ETC","Medicine","Car manufacturing","Iron","WholeSale",
+    "Software","Internet service","Electronic Parts","Car parts","Tele comm.",
+    "Retail","Financial Support","System Integration","Special Machines",
+    "ETC Food","Bank","Electricity")
+ggplot(data=dfallcompanies_group, 
+       mapping=aes(x=industry,y=market_cap_ratio_sum), 
+       group=industry, color=as.factor((industry))) + 
+  geom_bar(stat="identity", fill="dark blue") +
+  aes(x=reorder(industry_eng,-market_cap_ratio_sum),y=market_cap_ratio_sum,
+      label=market_cap_ratio_sum) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+1st item is, to simply put, cell phone manufacturing industry where Samsung 
+belongs to. Samsung is core part of the industry according to the ratio. It is 
+same as Samsung alone.  
+Other industries are much lower. So, when it comes to stability, the landscape 
+of Korea industry is fragile or weak at risk in my view, because the whole 
+economy is too much relying on Samsung and its export of non-diverse products.  
+I get that conventional manufacturing industry is decreasing. Rather the 
+financial service like bank and insurance is taking much part, 10%. Software in 
+IT is weak, compared to hardware like semiconductor, LED display.   
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?  
+In the bivariate exploration, I could not directly compare the total market 
+value and that of Samsung on the same time axis, but each plot 
+gave me interesting view point.  1. Samsung stock price over time revealed 
+there could be a cycle  2. Total Korea market revealed there is a big cycle 
+which is approaching another peak.  3. Korea industry is unbalanced.    
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?  
+One thing I clearly found is that the price of stock and traded volume go 
+the opposite. I would be obvious that expensive stock is not easy to trade, 
+but I verified that it is true.  
+And there might be seasonality in the stock price. I noticed a Samsung 
+stock flow repeating every year, not that assertive though. I need paper work 
+to see what was behind such cycling.  
+
+### What was the strongest relationship you found?
+Traded money and traded volume have much in common in the trend. It would be 
+much clearer once we put them on the same plot in multivariate analysis.  
+And I got investment ideas using the finding that there seems to be a cycle in 
+Samsung stock. Besides, there seems to be a 10-year-spanning cycle in total 
+Korea stock market.  
+
+
+
+# Multivariate Plots Section
+
+Now, let's put Samsung and the whole Korea market together.   
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+# samsung_share_count is 128386494
+ggplot(data=dfsamsung, mapping=aes(x=dfsamsung$date, 
+                                   y=Adj.Close*samsung_share_count)) +
+  geom_line(alpha=0.3, color="blue") + 
+  geom_line(data=dfmc_hist, mapping=aes(x=dfmc_hist$date, y=gross_market_cap), 
+            color="black") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
+OK. we can see Samsung might have much portion against the whole stock market 
+but not sure it is around 0.1 or 0.3 along with the time. Let's clarify that 
+by calculating the ratio over the time. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+dfsamsung.monthly_avg <- 
+                dfsamsung %>% 
+                group_by(year, month) %>% 
+                summarise(
+                  monthly_price_avg = mean(Adj.Close), 
+                  monthly_marketcap_avg = mean(Adj.Close*samsung_share_count), 
+                  monthly_volume = sum(Volume), 
+                  n=n())
+dfsamsung.monthly_avg$date <- as.Date(ISOdate(dfsamsung.monthly_avg$year, 
+                                              dfsamsung.monthly_avg$month, 15)) 
+dfsamsung.monthly_marketcap_ratio <- merge(dfsamsung.monthly_avg, dfmc_hist, 
+                                           by=c("year", "month"))
+dfsamsung.monthly_marketcap_ratio$ratio <- 
+  (dfsamsung.monthly_marketcap_ratio$monthly_marketcap_avg  / dfsamsung.monthly_marketcap_ratio$gross_market_cap )
+dfsamsung.monthly_marketcap_ratio$date <- 
+  as.Date(ISOdate(dfsamsung.monthly_marketcap_ratio$year, 
+                  dfsamsung.monthly_marketcap_ratio$month, 15)) 
+
+# plot
+ggplot(data=dfsamsung.monthly_marketcap_ratio, 
+       mapping=aes(x=dfsamsung.monthly_marketcap_ratio$date, 
+                   y=dfsamsung.monthly_marketcap_ratio$ratio)) + 
+  geom_line(alpha=0.3, color="red", size=2) +
+  scale_x_date(date_breaks = "6 month", date_labels = "%Y.%m") +
+  geom_line(data=subset(dfsamsung.monthly_avg, 
+                        year > 2005 & year < 2018), 
+            mapping=aes(x=date, y=monthly_marketcap_avg/(10^15*3)+0.09), 
+            color="blue", alpha=0.5) +
+  geom_line(data=dfmc_hist, mapping=aes(x=dfmc_hist$date, 
+                                        y=gross_market_cap/10^16+0.04), 
+            color="black") +
+  labs(title="The trend of Samsung ratio", 
+       x="Year.Month", 
+       y="Market Cap Ratio") +
+  annotate("text", x = as.Date("2015-10-01"), y = 0.20, color="black", 
+           label = "Korea") +
+  annotate("text", x = as.Date("2015-10-01"), y = 0.16, color="blue", 
+           label = "Samsung") +
+  annotate("text", x = as.Date("2015-10-01"), y = 0.12, color="red", 
+           label = "ratio") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+This plot depicts how the big ratio of Samsung Electronics against the whole 
+Korea stock market has been established. As expected, the more recent the 
+bigger ratio but there are several interesting parts.  
+1. There seems to be a cycle in the plot, spanning about 4 years. In other 
+words, Samsung stock boosted every 4 years. I don't think the stock price 
+solely can reveal this cycle.  
+2. There is a deep pit nearing zero in 2007~2008. I guess it overlaps the 
+global crisis and the date is much interesting - the drop was already made 1 
+year aheady of the crisis. Let's zoom in that part, with other trends 
+overlapped as reference.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, }
+ggplot(data=dfsamsung.monthly_marketcap_ratio, 
+       mapping=aes(x=dfsamsung.monthly_marketcap_ratio$date, 
+                   y=dfsamsung.monthly_marketcap_ratio$ratio)) + 
+  geom_line(alpha=0.3, color="red", size=2) + 
+  coord_cartesian(xlim=(as.Date(c("2007-01-01", "2012-01-01"))), 
+                  ylim=c(0.05,0.170)) + 
+  scale_x_date(date_breaks = "3 month", 
+               date_labels = "%Y.%m") +
+  geom_line(data=subset(dfsamsung.monthly_avg, 
+                        year %in% c(2007,2008,2009,2010,2011)), 
+            mapping=aes(x=date, y=monthly_marketcap_avg/10^15+0.04), 
+            color="blue", alpha=0.5) +
+  geom_line(data=dfmc_hist, mapping=aes(x=dfmc_hist$date, 
+                                        y=gross_market_cap/10^16+0.04), 
+            color="black") +
+  labs(title="Zooming in the Ratio of Samsung", 
+       subtitle="Market Cap ratio of Samsung to the whole Korea stock market", 
+       x="Year.Month", 
+       y="Market Cap Ratio") +
+  annotate("text", x = as.Date("2007-10-01"), y = 0.16, color="black", 
+           label = "Korea whole market cap.") +
+  annotate("text", x = as.Date("2007-10-01"), y = 0.097, color="blue", 
+           label = "Samsung market cap.") +
+  annotate("text", x = as.Date("2007-10-01"), y = 0.07, color="red", 
+           label = "Ratio") +
+  theme(plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5), 
+        axis.text.x = element_text(angle = 90, hjust = 1)) 
+
+```
+
+The Lehman Brothers bankruptcy broke out in September 2008. The two other lines, 
+market cap of Korea (black) and market cap of Samsung (blue), both dropped 
+just after that period. However, the market cap ratio at that time already was 
+climbing up after the drop 1 year ago.  
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+This is stock market data where people's collective mind is playing everywhere, 
+there would not be variables which show strong relationship like physics.  
+Rather, I could see some cycle over time. 1) Samsung's money absorbing cycle 
+every 4 years. 2) 10 years cycle of Korea stock market. These two might be 
+useful guide for investment.  
+
+
+### Were there any interesting or surprising interactions between features?
+Most surprising was mismatched timing of the trends of price and market cap 
+ratio. Seemingly price is a superficial metric and more essential part might be 
+market cap ratio which already made a motion and direction before certain price 
+forms. Of course, more data and research would be required.  
+
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+The 2 cycles, 4 years of Samsung and 10 years of Korea, could be the candidates 
+of the model. We would need more data to verify that.  
+
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+ggplot(data=dfsamsung.monthly_marketcap_ratio, 
+       mapping=aes(x=dfsamsung.monthly_marketcap_ratio$date, 
+                   y=dfsamsung.monthly_marketcap_ratio$ratio) ) + 
+  geom_line(alpha=0.3, color="red", size=2) + 
+  # coord_cartesian(xlim=(as.Date(c("2007-01-01", "2012-01-01"))), ylim=c(0.05,0.170)) + 
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  geom_line(data=subset(dfsamsung.monthly_avg, year > 2006 & year < 2018), 
+            mapping=aes(x=date, y=scale_this(monthly_marketcap_avg)/20), 
+            color="blue", 
+            alpha=0.5) +
+  geom_line(data=dfmc_hist, mapping=aes(x=dfmc_hist$date, 
+                                        y=scale_this(gross_market_cap)/20+0.05), 
+            color="black") +
+  labs(title="The Ratio of Samsung", 
+       subtitle="Market Cap ratio of Samsung to the whole Korea stock market", 
+       x="Year", 
+       y="Market Cap Ratio") +
+  annotate("text", x = as.Date("2014-11-01"), y = 0.05, color="black", 
+           label = "Korea whole market cap.") +
+  annotate("text", x = as.Date("2014-11-01"), y = -0.01, color="blue", 
+           label = "Samsung market cap.") +
+  annotate("text", x = as.Date("2014-11-01"), y = 0.14, color="red", 
+           label = "Ratio") +
+  theme(plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5), 
+        axis.text.x = element_text(angle = 90, hjust = 1)) 
+```
+
+### Description One  
+The current ratio of Samsung Electronics' market value against the entire Korea 
+stock market is 17%. It is huge portion. Then what about the ratio in the past? 
+In this project I tracked the trend of the ratio over time.  
+In the plot, red line is the ratio ranging 0.05 ~ 0.20. Black line indicates the 
+entire market capitalization of Korea stock market and blue line corresponds to 
+Samsung Electronics' market capitalization. Later two lines are just showing 
+overall trends, irrelavant to the y-axis unit.  
+The red line shows a cycling pattern of the ratio, repeating every 4 years. 
+When we see black and blue lines, the moment that the ratio hit the lowest points, 
+the gap between black and blue is widest. In my interpretation, Samsung's value 
+boosts up 1 year later of a big influx of money into the Korea stock market. 
+It looks like pumping water into a lake which in fact is mostly shallow but has 
+big depth area called Samsung. This plot is impressive to me because that implies 
+not just the weight of Samsung in Korea but also how they behave each other over 
+time.  
+The intial money influx was not targeting Samsung according to the plot, then 
+what company would that be? further research is required.  
+
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Two}
+dfss <- subset(dfsamsung_scaled, 
+          year %in% c(2000,2001,2002,2004,2008,2010,2011,2012,2013,2014,2015))
+ggplot(data = dfss, aes(x = month_day, y = Std_Close, group = year, 
+                        colour=as.factor(year))) + 
+  scale_x_date(date_breaks = "1 month", date_labels = "%m") + 
+  # coord_cartesian(xlim=(as.Date(c("2000-08-01", "2000-12-01")))) +
+  geom_line(alpha=.2) +
+  geom_smooth(alpha=.5) +
+  labs(title="Seasonality in Samsung Stock Price", x="Month", 
+       y="Stock Price, Standardized") +
+  labs(color='Year')  +
+  theme(plot.title = element_text(hjust = 0.5)) 
+  
+```
+
+### Description Two
+The reason I am interested in this plot is that this might be a clue to invest 
+Samsung better. Of course we already checked other pattern exist but the above 
+looks prominent and frequent. There might be some reason behind, for example 
+rolling out new product aiming at certain season.  
+
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+ggplot(data=dfmc_hist, mapping=aes(x=date, y=traded_money_monthly)) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") + 
+  geom_line(alpha=0.3) + 
+  geom_smooth() +
+  labs(title="Money Tide over 10 years", 
+       subtitle="Cycling pattern of money flow in Korea stock market", 
+       x="Year", y="Monthly Traded Money (KRW)") +
+  theme(plot.title = element_text(hjust = 0.5), 
+        plot.subtitle = element_text(hjust = 0.5)) 
+
+```
+
+### Description Three
+Together with the traded volume plot which has the same pattern, this plot 
+might be able to guide investors how the landscape is changing. 
+It totally feels like tide. Presently people are shifting their wealth over to 
+stock market, then from where? real estate maybe? Another research would be 
+required.  
+
+
+# Reflection
+
+Main focus here is the ratio of Samsung's value against total value of Korea 
+stock market over time. During the exploration, there were other interesting 
+findings not just the shape of the ratio plot. One thing most impressive 
+is that the ratio could become a guide for investors because certain cycle was 
+detected and the ratio pattern preceded ahead of the price. Validation is 
+necessary of course.  
+About 60% of the time was spent to prepare the data, 3 files. Adapting to Yahoo 
+Finance API was most tedious part because of my limited knowledge on stock 
+market and weak documentation of Yahoo Finance. I heavily relied on many blogs.  
+My exploration and analysis are lack of generalization. The pattern and cycle I 
+found have to be validated with other data such as other company data like 
+Hyundai, LG, and other global companies in each stock market. That will be 
+the future items for research.  
+During the exploration, again I realized that R is easy, quick and intuitive. 
+Because Python has been in my comfort zone, I searched Python equivalent to 
+ggplot library and found "plotnine" 
+(http://pltn.ca/plotnine-superior-python-ggplot/). The feature 
+and grammar is the same and I will use that library in my other projects at 
+early stage of data exploration .  
+
+
+### References   
+*	Samsung Electronics on Yahoo Finance : https://finance.yahoo.com/quote/005935.KS?p=005935.KS
+*	Yahoo Finance and python, guide : https://ntguardian.wordpress.com/2016/09/19/introduction-stock-market-data-python-1/
+*	Korea stock index, KOSPI historical data download : http://kosis.kr/statHtml/statHtml.do?orgId=343&tblId=DT_343_2010_S0001#
+*	Company information in KOSPI, KOSDAQ : www.krx.co.kr
+*	Plotting seasonality : https://stackoverflow.com/questions/13520639/ggplot-year-by-year-comparison
+*	Value standardization : https://stackoverflow.com/questions/35775696/trying-to-use-dplyr-to-group-by-and-apply-scale
+
+
+
